@@ -53,52 +53,15 @@ Each SLURM job spawns `n_replica` independent workers via `multiprocessing`. All
 
 ## Quick Start
 
-### 1. Write a configuration file
-
-```yaml
-job_name:       my_tps_run
-work_directory: /scratch/my_project
-partition:      gpu
-n_particles:    1000
-density:        1.2
-n_replica:      8
-
-runtype:    g
-T:          [0.45, 0.65, 5]   # linspace(0.45, 0.65, 5)
-g:          [0.0, 0.5, 6]
-s:          0.0
-n_decimals: [4, 4, 4]
-
-dt:     0.005
-nstout: 10
-t_obs:  1.0
-t_equil: 2.0
-
-thermostat: Nose-Hoover
-p_shoot:    0.5
-p_shift:    0.5
-one_way_shoot: false
-one_way_shift: false
-
-n_relax:  200
-n_acqui:  800
-n_branch: 100
-n_dump:   [10, 40]
-```
-
-### 2. Run
+Copy `example.yaml` from the repository, edit `work_directory` and `partition`, then:
 
 ```bash
-# Step 1 — generate initial equilibrated trajectories for each T
-kapybara prerun -c config.yaml
-
-# Step 2 — run TPS simulations (polls until all jobs complete)
-kapybara run -c config.yaml
-
-# Monitor progress
-kapybara monitor -c config.yaml -w 30    # refresh every 30 s
-kapybara queue   -c config.yaml -w 10    # SLURM queue view
+kapybara prerun -c config.yaml          # equilibrate initial trajectories
+kapybara run    -c config.yaml          # run TPS (polls until complete)
+kapybara monitor -c config.yaml -w 30   # live progress board
 ```
+
+For a full walkthrough and config field descriptions, see the [documentation](https://kapybara.readthedocs.io).
 
 ## Architecture
 
