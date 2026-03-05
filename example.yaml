@@ -1,0 +1,38 @@
+# ═══════════════ [1] BASIC INFORMATION ═══════════════
+work_directory  : "/home/commuteneko/develop/KAPyBARA"
+job_name        : "example"
+
+# ══════════════════ [2] SYSTEM SIZE ══════════════════
+n_particles     : 250
+t_obs           : 100
+density         : 1.2
+n_replica       : 16
+
+# ══════════════════ [3] MD SETTINGS ══════════════════
+dt              : 0.005
+nstout          : 200
+t_equil         : 1000
+thermostat      : "Nose-Hoover"
+# gamma: ONLY FOR LANGEVIN THERMOSTAT 
+gamma           : 10
+
+# ═════════════════ [4] BIASING FIELD ═════════════════
+runtype         : "g"
+T               : [0.65, 0.66, 6]
+s               : 0.0
+g               : [-0.001, 0.001, 5]
+n_decimals      : [4, 5, 5]
+
+# ════════════ [5] TRANSITION PATH SAMPLING ═══════════
+one_way_shoot   : False
+one_way_shift   : False
+p_shoot         : 0.15
+p_shift         : 0.85
+n_relax         : 100
+n_acqui         : 500
+n_branch        : 100
+n_dump          : [2, 10]
+
+# ══════════════ [6] JOB SUMBIT SETTINGS ══════════════
+partition       : "smallmem,largemem"
+exclude         : ["node[29-32]", "node36"]

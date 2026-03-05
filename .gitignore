@@ -1,0 +1,6 @@
+kapybara.egg-info
+CODEBASE.md
+.venv
+example/
+_build/
+**/__pycache__
