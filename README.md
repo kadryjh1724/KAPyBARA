@@ -5,6 +5,9 @@
 <p align="center">
   <b>K</b>ob-<b>A</b>ndersen model simulation with <b>Py</b>thon-<b>BA</b>sed t<b>RA</b>jectory sampling
 </p>
+<p align="center">
+   <i>Submitted to Journal of Chemical Physics</i>
+</p>
 
 <p align="center">
   <img src="https://img.shields.io/badge/Python-3.10%2B-blue?logo=python&logoColor=white" alt="Python">
