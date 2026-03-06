@@ -14,6 +14,7 @@
   <img src="https://img.shields.io/badge/LAMMPS-required-orange" alt="LAMMPS">
   <img src="https://img.shields.io/badge/SLURM-HPC-green" alt="SLURM">
   <img src="https://img.shields.io/badge/version-1.0.0-informational" alt="Version">
+  <a href="https://kapybara-cnbc.readthedocs.io/en/latest/"><img src="https://readthedocs.org/projects/kapybara-cnbc/badge/?version=latest" alt="Documentation"></a>
 </p>
 
 ---
@@ -68,7 +69,7 @@ kapybara monitor -c config.yaml -w 30               # live progress board
 kapybara queue   -c config.yaml --eta               # show ETA per running job
 ```
 
-For a full walkthrough and config field descriptions, see the [documentation](https://kapybara.readthedocs.io).
+For a full walkthrough and config field descriptions, see the [documentation](https://kapybara-cnbc.readthedocs.io/en/latest/).
 
 ## Architecture
 
@@ -110,7 +111,7 @@ echo 'export PATH="/path/to/KAPyBARA/.venv/bin:$PATH"' >> ~/.bashrc
 source ~/.bashrc
 ```
 
-For full instructions including the conda path, wheel naming, verification steps, and SLURM job script setup, see the **[Installation Guide](https://kapybara.readthedocs.io/en/latest/installation.html)** in the documentation.
+For full instructions including the conda path, wheel naming, verification steps, and SLURM job script setup, see the **[Installation Guide](https://kapybara-cnbc.readthedocs.io/en/latest/installation.html)** in the documentation.
 
 ## Quickstart for Agents
 
