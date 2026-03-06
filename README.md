@@ -120,11 +120,13 @@ Requirements: LAMMPS (shared build + Python API), SLURM
    git clone https://github.com/kadryjh1724/kapybara.git && cd KAPyBARA
    pip install .
 
-2. Write a config file (see Quick Start section above), then run:
+2. To understand this whole codebase, read CODEBASE.md.
+
+3. Write a config file (see Quick Start section above), then run:
    kapybara prerun -c config.yaml   # equilibrate initial trajectories for each T
    kapybara run   -c config.yaml   # submit and poll TPS jobs until completion
 
-3. Monitor progress:
+4. Monitor progress:
    kapybara monitor -c config.yaml  # (T × field) progress board
    kapybara queue   -c config.yaml  # live SLURM queue view
 
