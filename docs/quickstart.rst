@@ -71,10 +71,24 @@ Once all prerun jobs finish, launch transition path sampling:
 
 .. code-block:: bash
 
-   kapybara run -c config.yaml
+   kapybara run -c config.yaml            # foreground (Ctrl+C to stop cleanly)
+   kapybara run -c config.yaml --bg       # background — prints PID and log path
+   kapybara run -c config.yaml --bg --log /path/to/run.log   # redirect output to custom file
 
 The scheduler polls every 10 seconds, submitting TPS jobs as their
 dependencies become ready (branching logic based on ``n_branch``).
+
+With ``--bg``, the scheduler is detached from the terminal and all its output
+(job submission messages, completion notices, errors) is captured to a log
+file — by default ``{work_directory}/{job_name}/kapybara.log``. Use ``--log``
+to redirect to a different path.
+
+To stop a backgrounded scheduler:
+
+.. code-block:: bash
+
+   kapybara stop -c config.yaml           # sends SIGTERM, waits up to 5 s
+   kapybara stop -c config.yaml --force   # sends SIGKILL if SIGTERM times out
 
 4. Monitor progress
 -------------------
@@ -92,9 +106,23 @@ Check the SLURM queue for KAPyBARA jobs with progress bars:
 
    kapybara queue -c config.yaml
    kapybara queue -c config.yaml -w 10
+   kapybara queue -c config.yaml --eta        # show estimated time remaining
 
 Restart behaviour
 -----------------
 
 If a job is interrupted, rerunning the same command resumes from the
 latest ``.npy`` checkpoint automatically — no manual intervention needed.
+
+5. Analysis (coming soon)
+-------------------------
+
+Post-processing and analysis tools (acceptance statistics, path data
+extraction, MBAR reweighting) are planned for a future release.
+The ``kapybara analysis`` subcommand is reserved for these tools but is
+not yet functional in the current version.
+
+.. note::
+
+   Running ``kapybara analysis ...`` will print a ``not yet implemented``
+   message and exit without error.

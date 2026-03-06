@@ -233,8 +233,14 @@ class _RunnerBase:
             setup_kob_andersen(lmp, cfg)
             lmp.command("neigh_modify every 1 delay 5 check yes")
 
+            if not start_from_relax:
+                _init_phase, _init_idx = "acqui", acqui_idx
+            elif continue_relax:
+                _init_phase, _init_idx = "relax", relax_idx
+            else:
+                _init_phase, _init_idx = "relax", 0
             self.state_db.update_tps_state(T, field_value, replica_index,
-                                           "relax", 0, "running")
+                                           _init_phase, _init_idx, "running")
 
             # ── Relaxation phase ──────────────────────────────────────────
             time_relax = []

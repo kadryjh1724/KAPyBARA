@@ -56,9 +56,13 @@ Each SLURM job spawns `n_replica` independent workers via `multiprocessing`. All
 Copy `example.yaml` from the repository, edit `work_directory` and `partition`, then:
 
 ```bash
-kapybara prerun -c config.yaml          # equilibrate initial trajectories
-kapybara run    -c config.yaml          # run TPS (polls until complete)
-kapybara monitor -c config.yaml -w 30   # live progress board
+kapybara prerun -c config.yaml                      # equilibrate initial trajectories
+kapybara run    -c config.yaml                      # run TPS (polls until complete)
+kapybara run    -c config.yaml --bg                 # detach to background; stdout/stderr → kapybara.log
+kapybara run    -c config.yaml --bg --log run.log   # redirect background output to run.log
+kapybara stop   -c config.yaml                      # stop a backgrounded scheduler
+kapybara monitor -c config.yaml -w 30               # live progress board
+kapybara queue   -c config.yaml --eta               # show ETA per running job
 ```
 
 For a full walkthrough and config field descriptions, see the [documentation](https://kapybara.readthedocs.io).

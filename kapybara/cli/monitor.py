@@ -14,11 +14,11 @@ import os
 import sys
 import time
 import signal
-import subprocess
 
 from kapybara.config.loader import load_config
 from kapybara.config.paths import PathManager
 from kapybara.state.db import StateDB
+from kapybara.cli.process import find_scheduler_pid
 
 MIN_X_WIDTH = 50
 
@@ -52,32 +52,6 @@ def _failed():
     """Print a red-background 2-character cell (failed)."""
     print("\x1b[0;30;41m" + "  " + "\x1b[0m", end="")
 
-
-def _get_pid(config_path: str) -> str:
-    """Find the PID of the running ``kapybara run`` process for this config.
-
-    Uses ``ps aux | grep`` to locate a process matching the config file name,
-    excluding monitor and queue processes. Returns ``"N/A"`` if none found.
-
-    Args:
-        config_path: Path to the YAML config file.
-
-    Returns:
-        PID string of the first matching process, or ``"N/A"``.
-    """
-    config_name = os.path.basename(config_path)
-    cmd = (
-        f"ps aux | grep 'kapybara.*{config_name}'"
-        f" | grep -v grep"
-        f" | grep -v 'kapybara monitor'"
-        f" | grep -v 'kapybara queue'"
-        f" | awk '{{print $2}}'"
-    )
-    result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
-    pids = [p for p in result.stdout.strip().split("\n") if p]
-    if not pids:
-        return "N/A"
-    return pids[0]
 
 
 def _cell_status(state_db: StateDB, T: str, field_value: str,
@@ -132,7 +106,7 @@ def _print_board(config, state_db: StateDB, args) -> None:
     print(f"║" + " JOB NAME".ljust(22) + "║ "
           + f"{config.job_name}".ljust(dim_x - 24) + "║")
     print(f"║" + " PROCESS PID".ljust(22) + "║ "
-          + f"{_get_pid(args.config)}".ljust(dim_x - 24) + "║")
+          + f"{find_scheduler_pid(args.config) or 'N/A'}".ljust(dim_x - 24) + "║")
     print(f"║" + f" (T, {config.runtype}) DIMENSION".ljust(22) + "║ "
           + f"({n_T}, {n_field})".ljust(dim_x - 24) + "║")
     print(f"║" + " NUM. OF REPLICAS".ljust(22) + "║ "

@@ -49,7 +49,8 @@ CREATE TABLE IF NOT EXISTS tps_jobs (
     status       TEXT    NOT NULL DEFAULT 'pending',
     submitted_at TEXT,
     started_at   TEXT,
-    completed_at TEXT,
+    completed_at       TEXT,
+    progress_at_submit INTEGER NOT NULL DEFAULT 0,
     PRIMARY KEY (T, field_value)
 );
 
@@ -138,6 +139,13 @@ class StateDB:
             conn.execute("PRAGMA journal_mode=DELETE")
             conn.execute("PRAGMA synchronous=FULL")
             conn.executescript(SCHEMA)
+            try:
+                conn.execute(
+                    "ALTER TABLE tps_jobs "
+                    "ADD COLUMN progress_at_submit INTEGER NOT NULL DEFAULT 0"
+                )
+            except sqlite3.OperationalError:
+                pass  # column already exists
 
     @contextmanager
     def _connect(self):
@@ -263,13 +271,25 @@ class StateDB:
             )
 
     def submit_tps_job(self, T: str, field_value: str,
-                       slurm_job_id: str) -> None:
+                       slurm_job_id: str,
+                       progress_at_submit: int = 0) -> None:
+        """Record a submitted TPS SLURM job.
+
+        Args:
+            T: Temperature string.
+            field_value: Field value string.
+            slurm_job_id: SLURM job ID returned by ``sbatch``.
+            progress_at_submit: Cumulative progress snapshot at submission
+                time, used by ``kapybara queue --eta`` to isolate the rate
+                of the current job when computing ETA after a kill/resubmit.
+        """
         with self._connect() as conn:
             conn.execute(
                 """UPDATE tps_jobs
-                   SET slurm_job_id=?, status='submitted', submitted_at=?
+                   SET slurm_job_id=?, status='submitted', submitted_at=?,
+                       progress_at_submit=?
                    WHERE T=? AND field_value=?""",
-                (slurm_job_id, _now(), T, field_value),
+                (slurm_job_id, _now(), progress_at_submit, T, field_value),
             )
 
     def update_tps_job_status(self, T: str, field_value: str,

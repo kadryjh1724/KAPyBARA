@@ -219,12 +219,38 @@ class Scheduler:
             command=worker_cmd,
             exclude=self.config.exclude,
         )
+        progress = self._current_progress(T, field_value)
         job_id = submit_job(cmd)
-        self.state_db.submit_tps_job(T, field_value, job_id)
+        self.state_db.submit_tps_job(T, field_value, job_id,
+                                     progress_at_submit=progress)
         if not self.quiet and n_pending < self.config.n_replica:
             print(f"Scheduler: T={T} f={field_value} — "
                   f"resubmitted {n_pending}/{self.config.n_replica} replicas "
                   f"(job {job_id}).")
+
+    def _current_progress(self, T: str, field_value: str) -> int:
+        """Compute total TPS step count for one (T, field_value) job.
+
+        Used to snapshot progress at submission time so that ETA calculations
+        (``kapybara queue --eta``) can isolate the rate of the current SLURM
+        job, correctly handling kill/resubmit scenarios where cumulative
+        progress includes work from previous runs.
+
+        Args:
+            T: Temperature string.
+            field_value: Field value string.
+
+        Returns:
+            Summed step count across all replicas.
+        """
+        rows = self.state_db.get_tps_replica_progress(T, field_value)
+        total = 0
+        for row in rows:
+            if row["status"] == "completed" or row["phase"] == "acqui":
+                total += self.config.n_relax + row["run_index"]
+            else:
+                total += row["run_index"]
+        return total
 
     # ── Status checks ──
 

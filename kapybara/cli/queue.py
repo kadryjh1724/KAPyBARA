@@ -18,7 +18,8 @@ import matplotlib.cm as cm
 from kapybara.config.loader import load_config
 from kapybara.config.paths import PathManager
 from kapybara.state.db import StateDB
-from kapybara.utils.convert import strfdelta2
+from kapybara.utils.convert import strfdelta2, strfdelta_short
+from kapybara.cli.process import find_scheduler_pid
 
 
 def _signal_handler(sig, frame):
@@ -41,27 +42,6 @@ def _parse_time_string(time_str: str) -> int:
         return parts[0] * 60 + parts[1]
     raise ValueError(f"Unrecognised time format: {time_str}")
 
-
-def _get_pid(config_path: str) -> str:
-    """Find the PID of the running ``kapybara run`` process for this config.
-
-    Args:
-        config_path: Path to the YAML config file.
-
-    Returns:
-        PID string of the first matching process, or ``"N/A"`` if none found.
-    """
-    config_name = os.path.basename(config_path)
-    cmd = (
-        f"ps aux | grep 'kapybara.*{config_name}'"
-        f" | grep -v grep"
-        f" | grep -v 'kapybara monitor'"
-        f" | grep -v 'kapybara queue'"
-        f" | awk '{{print $2}}'"
-    )
-    result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
-    pids = [p for p in result.stdout.strip().split("\n") if p]
-    return pids[0] if pids else "N/A"
 
 
 def _progress_color(progress: int, total: int, colormap: str = "RdYlGn") -> str:
@@ -143,6 +123,45 @@ def _colorbar_line(width: int) -> str:
     return line
 
 
+def _compute_eta(state_db: StateDB, T: str, field_value: str,
+                 dt_secs: int, progress: int, total: int) -> int | None:
+    """Compute estimated remaining seconds for one (T, field_value) job.
+
+    Uses ``progress_at_submit`` stored in the ``tps_jobs`` table to isolate
+    the rate of the *current* SLURM job, correctly handling kill/resubmit
+    scenarios where cumulative progress includes work from previous runs.
+
+    Returns ``None`` when an estimate cannot be made (progress < 1%,
+    no elapsed time, or no progress delta since submission).
+
+    Args:
+        state_db: :class:`~kapybara.state.db.StateDB` instance.
+        T: Temperature string.
+        field_value: Field value string.
+        dt_secs: SLURM elapsed wall time in seconds for the current job.
+        progress: Current total progress (from :func:`_job_progress`).
+        total: Maximum possible progress (``n_replica * (n_relax + n_acqui)``).
+
+    Returns:
+        Estimated remaining seconds, or ``None`` if unavailable.
+    """
+    if dt_secs <= 0 or total <= 0:
+        return None
+    if progress / total < 0.01:
+        return None
+
+    job = state_db.get_tps_job(T, field_value)
+    progress_at_submit = job.get("progress_at_submit", 0) if job else 0
+
+    progress_delta = progress - progress_at_submit
+    if progress_delta <= 0:
+        return None
+
+    remaining = total - progress
+    rate = progress_delta / dt_secs
+    return int(remaining / rate)
+
+
 def queue(args) -> None:
     """Handle the ``kapybara queue`` sub-command.
 
@@ -168,6 +187,7 @@ def queue(args) -> None:
     n_T         = len(config.T)
     n_field     = len(f_vals)
     total       = config.n_replica * (config.n_relax + config.n_acqui)
+    show_eta    = args.eta
 
     # ── Column widths derived from actual formatted value lengths ──────────
     # config.T / config.g / config.s are already formatted strings (e.g. "0.6500")
@@ -185,10 +205,14 @@ def queue(args) -> None:
     RT_W    = 17   # " DDd HHh MMm SSs "  (strfdelta2 = 15 chars)
     NODE_W  = 8    # "  NNNNNN  "
     PCT_W   = 5    # "  NNN  "  (_progress_color = 3 chars)
+    ETA_W   = 13   # "NNd NNh NNm" (11 chars) + 2 padding
 
     # Total inner width: sum of column widths + one ║ separator between each
-    _cols = [IDX_W, NTYPE_W, T_col_w, f_col_w, RT_W, NODE_W, PCT_W]
-    inner = sum(_cols) + len(_cols) - 1   # 6 separators for 7 columns
+    if show_eta:
+        _cols = [IDX_W, NTYPE_W, T_col_w, f_col_w, RT_W, ETA_W, NODE_W, PCT_W]
+    else:
+        _cols = [IDX_W, NTYPE_W, T_col_w, f_col_w, RT_W, NODE_W, PCT_W]
+    inner = sum(_cols) + len(_cols) - 1
 
     # Info-header section: left column is fixed at 20, right takes the rest
     INFO_L   = 20
@@ -219,6 +243,10 @@ def queue(args) -> None:
             "T".center(T_col_w),
             field_label.upper().center(f_col_w),
             "RUNTIME".center(RT_W),
+        ]
+        if show_eta:
+            cells.append("ETA".center(ETA_W))
+        cells += [
             "NODE".center(NODE_W),
             "%".center(PCT_W),
         ]
@@ -226,7 +254,8 @@ def queue(args) -> None:
 
     def _data_row(job_id: str, partition: str, T: str, field_value: str,
                   dt_secs: int, node: str, progress: int,
-                  is_pending: bool = False) -> str:
+                  is_pending: bool = False,
+                  eta_secs: int | None = None) -> str:
         if is_pending:
             rt  = "-".center(RT_W - 2)
             nd  = "-".center(NODE_W - 2)
@@ -235,16 +264,20 @@ def queue(args) -> None:
             rt  = strfdelta2(dt_secs)
             nd  = node[:NODE_W - 2].center(NODE_W - 2)
             pct = _progress_color(progress, total)
-        return (
+        row = (
             "║ " + job_id.rjust(IDX_W - 2)
             + " ║ " + partition.center(NTYPE_W - 2)
             + " ║ " + T.center(T_col_w - 2)
             + " ║ " + field_value.rjust(f_col_w - 2)
             + " ║ " + rt
-            + " ║ " + nd
-            + " ║ " + pct
-            + " ║"
         )
+        if show_eta:
+            if is_pending or eta_secs is None:
+                row += " ║ " + "-".center(ETA_W - 2)
+            else:
+                row += " ║ " + strfdelta_short(eta_secs)
+        row += " ║ " + nd + " ║ " + pct + " ║"
+        return row
 
     # ── Main loop ─────────────────────────────────────────────────────────
 
@@ -263,7 +296,7 @@ def queue(args) -> None:
 
         print(_top())
         print(_info("JOB NAME",      config.job_name))
-        print(_info("PROCESS PID",   _get_pid(args.config)))
+        print(_info("PROCESS PID",   str(find_scheduler_pid(args.config) or "N/A")))
         print(_info(f"(T, {field_label}) DIM", f"({n_T}, {n_field})"))
         print(_info("NUM. REPLICAS", str(config.n_replica)))
         print(_progress_hdr())
@@ -290,7 +323,13 @@ def queue(args) -> None:
                 node = "-"
 
             progress = 0 if is_pending else _job_progress(state_db, T, field_value, config.n_relax)
-            print(_data_row(job_id, partition, T, field_value, dt_secs, node, progress, is_pending))
+
+            eta_secs = None
+            if show_eta and not is_pending:
+                eta_secs = _compute_eta(state_db, T, field_value,
+                                        dt_secs, progress, total)
+            print(_data_row(job_id, partition, T, field_value, dt_secs, node,
+                            progress, is_pending, eta_secs))
 
         print(_hline("╚", "╩", "╝"))
 

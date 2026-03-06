@@ -2,17 +2,32 @@
 """kapybara — main CLI entry point.
 
 Subcommands:
-  prerun   Submit prerun SLURM jobs (one per temperature).
-  run      Enter the TPS scheduling loop (run_type from config).
-  monitor  ASCII monitoring board backed by StateDB.
-  queue    SLURM queue viewer with per-job progress bar.
-  analysis Analysis sub-commands (acceptance / time / data).
+
+``prerun``
+    Submit prerun SLURM jobs (one per temperature).
+
+``run``
+    Enter the TPS scheduling loop (run_type from config).
+    Use ``--bg`` to detach from the terminal.
+
+``stop``
+    Stop a backgrounded scheduler by sending SIGTERM.
+
+``monitor``
+    ASCII monitoring board backed by StateDB.
+
+``queue``
+    SLURM queue viewer with per-job progress bar.
+
+``analysis``
+    Analysis sub-commands (acceptance / time / data).
 """
 
 import argparse
 
 from kapybara.cli.prerun  import prerun
 from kapybara.cli.run     import run
+from kapybara.cli.stop    import stop
 from kapybara.cli.monitor import monitor
 from kapybara.cli.queue   import queue
 
@@ -56,7 +71,24 @@ def main():
                        help="Path to config YAML file.")
     p_run.add_argument("-q", "--quiet", action="store_true", default=False,
                        help="Suppress output messages.")
+    p_run.add_argument("--bg", action="store_true", default=False,
+                       help="Run scheduler in background (detached from terminal).")
+    p_run.add_argument("--log", type=str, default=None,
+                       help=(
+                           "File path for capturing scheduler stdout and stderr "
+                           "in --bg mode (default: {work_dir}/{job_name}/kapybara.log)."
+                       ))
     p_run.set_defaults(func=lambda args: run(args))
+
+    # ── stop ──────────────────────────────────────────────────────────────
+    p_stop = subparsers.add_parser(
+        "stop", help="Stop a backgrounded kapybara run."
+    )
+    p_stop.add_argument("-c", "--config", required=True, type=str,
+                        help="Path to config YAML file.")
+    p_stop.add_argument("--force", action="store_true", default=False,
+                        help="Send SIGKILL if the process does not exit after SIGTERM.")
+    p_stop.set_defaults(func=lambda args: stop(args))
 
     # ── monitor ───────────────────────────────────────────────────────────
     p_monitor = subparsers.add_parser(
@@ -79,6 +111,8 @@ def main():
     p_queue.add_argument("-n", "--number", type=int, required=False,
                          default=20,
                          help="Show top N entries from squeue.")
+    p_queue.add_argument("--eta", action="store_true", default=False,
+                         help="Show estimated time remaining for each running job.")
     p_queue.set_defaults(func=lambda args: queue(args))
 
     # ── analysis ──────────────────────────────────────────────────────────

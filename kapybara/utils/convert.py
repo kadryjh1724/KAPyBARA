@@ -69,6 +69,25 @@ def npy2str(arr: np.ndarray, n: int) -> List[str]:
     return [f"{a:.{n}f}" for a in rounded_arr]
 
 
+def strfdelta_short(delta_t: float) -> str:
+    """Format elapsed seconds as ``DDd HHh MMm`` (zero-padded, no seconds).
+
+    Same decomposition as :func:`strfdelta2` but drops the seconds field.
+    Output is exactly 11 characters.
+
+    Args:
+        delta_t: Elapsed time in seconds.
+
+    Returns:
+        Formatted string, e.g. ``"01d 02h 48m"``.
+    """
+    days    = int(delta_t // 86400)
+    remain  = delta_t % 86400
+    hours   = int(remain // 3600)
+    minutes = int(remain % 3600 // 60)
+    return f"{days:02d}d {hours:02d}h {minutes:02d}m"
+
+
 def strfdelta2(delta_t: float) -> str:
     """Format elapsed seconds as DDd HHh MMm SSs (zero-padded)."""
     days    = int(delta_t // (24 * 3600))

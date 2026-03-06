@@ -42,3 +42,19 @@ kapybara.cli.queue
    :members:
    :undoc-members:
    :show-inheritance:
+
+kapybara.cli.stop
+------------------
+
+.. automodule:: kapybara.cli.stop
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+kapybara.cli.process
+---------------------
+
+.. automodule:: kapybara.cli.process
+   :members:
+   :undoc-members:
+   :show-inheritance:
