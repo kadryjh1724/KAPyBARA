@@ -62,7 +62,7 @@ def _run_background(args, paths) -> None:
     config_path = os.path.realpath(args.config)
     log_path = args.log or os.path.join(paths.base, "kapybara.log")
 
-    cmd = [sys.executable, "-m", "kapybara.cli.cli", "run", "-c", config_path, "-q"]
+    cmd = [sys.executable, "-m", "kapybara", "run", "-c", config_path, "-q"]
     log_fd = open(log_path, "a")
     proc = subprocess.Popen(
         cmd,
